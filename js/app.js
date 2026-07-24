@@ -35,21 +35,34 @@
   }
 
   function persistSubmittedSet() {
-    localStorage.setItem(SUBMITTED_KEY, JSON.stringify([...submittedSegmentIds]));
+    try {
+      localStorage.setItem(SUBMITTED_KEY, JSON.stringify([...submittedSegmentIds]));
+    } catch (err) {
+      // Storage may be full/blocked (e.g. private browsing) - the color
+      // change below still happens for this session either way.
+      console.warn("Could not persist submitted segments", err);
+    }
   }
 
   function styleForSegment(id) {
     return submittedSegmentIds.has(id) ? SUBMITTED_STYLE : DEFAULT_STYLE;
   }
 
+  // Forces the layer to gold unconditionally, regardless of whether it's
+  // currently the "selected" (orange) layer - called right at submit time
+  // so the color change doesn't depend on the deselect/close-sheet flow
+  // running afterward. deselectSegment() re-applies the same style when the
+  // sheet closes, which is a harmless no-op once this has already run.
   function markSegmentSubmitted(id) {
-    if (submittedSegmentIds.has(id)) return;
     submittedSegmentIds.add(id);
-    persistSubmittedSet();
     const layer = layerBySegmentId.get(id);
-    if (layer && layer !== selectedLayer) {
+    if (layer) {
       layer.setStyle(SUBMITTED_STYLE);
+      layer.bringToFront();
+    } else {
+      console.warn("markSegmentSubmitted: no layer found for id", id);
     }
+    persistSubmittedSet();
   }
 
   // Best-effort: ask the backend which segments already have a submission
