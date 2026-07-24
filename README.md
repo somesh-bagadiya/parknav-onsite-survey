@@ -92,6 +92,17 @@ If you already deployed an earlier version of `Code.gs` and have existing
 rows, see the "Updating from an earlier version" section in
 [`apps-script/DEPLOY.md`](apps-script/DEPLOY.md) to add the two new columns.
 
+### If a street gets surveyed more than once
+
+That's expected and fully supported — nothing is lost. `Responses` keeps
+every submission ever made (a full history); a second tab,
+`LatestBySegment`, is automatically kept in sync with exactly one row per
+street, always the most recent submission for it. Use `Responses` for a
+full audit trail, or `LatestBySegment` when you just want "current state of
+every street." See "LatestBySegment tab" in
+[`apps-script/DEPLOY.md`](apps-script/DEPLOY.md) for the one-time backfill
+step if you had submissions before this feature existed.
+
 ### Publishing to GitHub Pages
 
 This repo folder is meant to become its own GitHub repo

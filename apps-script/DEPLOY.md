@@ -101,7 +101,34 @@ correct headers) on the next submission.
 
 `GET <your-web-app-url>?action=submittedSegments` returns a JSON array of
 every distinct `SegmentId` that has at least one submission. The map app
-uses this to shade streets green for the whole team, not just the device
+uses this to shade streets gold for the whole team, not just the device
 that submitted them. This requires the same redeploy step above to take
 effect. It's best-effort: if it's unreachable for any reason, the app
 silently falls back to only showing segments *this device* has submitted.
+
+## "LatestBySegment" tab (handles a street being surveyed more than once)
+
+A street can legitimately get more than one submission (re-checks,
+corrections, different times of day). `Responses` is an append-only log —
+it keeps every submission ever made and is never rewritten, so nothing is
+ever lost. Alongside it, the script now also maintains a second tab called
+**`LatestBySegment`**, which always has exactly one row per `SegmentId`,
+overwritten in place with that segment's most recent submission. Use this
+tab whenever you want "what's the current state of every street" without
+having to manually filter out older duplicate rows in `Responses`.
+
+This tab is created and kept in sync automatically — you don't need to do
+anything for new submissions. If you already had submissions in `Responses`
+*before* deploying this version, run the one-time backfill so
+`LatestBySegment` reflects that existing data too:
+
+1. In the Apps Script editor, use the function dropdown (next to the **Run**
+   button, at the top) to select **`rebuildLatestSheet`**.
+2. Click **Run**. The first time, you may need to re-authorize (same as the
+   initial deployment).
+3. Check the Sheet — a `LatestBySegment` tab should now exist with one row
+   per already-submitted street.
+
+You can re-run `rebuildLatestSheet` any time you want to force the two tabs
+back into agreement (it fully recreates `LatestBySegment` from whatever is
+currently in `Responses`).

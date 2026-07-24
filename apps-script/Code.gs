@@ -14,6 +14,7 @@
  */
 
 const SHEET_NAME = "Responses";
+const LATEST_SHEET_NAME = "LatestBySegment";
 const PHOTO_FOLDER_NAME = "Parknav Survey Photos";
 
 const COLUMNS = [
@@ -81,7 +82,7 @@ function doPost(e) {
       photoUrl = savePhoto(payload.photoDataUrl, payload.clientId || Utilities.getUuid());
     }
 
-    sheet.appendRow([
+    const row = [
       new Date(),
       payload.submittedAtLocal || "",
       payload.submitterName || "",
@@ -96,11 +97,83 @@ function doPost(e) {
       payload.meterRate ?? "",
       photoUrl,
       payload.clientId || "",
-    ]);
+    ];
+
+    sheet.appendRow(row);
+    upsertLatestRow(row);
 
     return jsonResponse({ status: "ok" });
   } catch (err) {
     return jsonResponse({ status: "error", message: String(err) });
+  }
+}
+
+/**
+ * A street can legitimately be surveyed more than once (re-checks, corrections,
+ * different times of day). "Responses" keeps every submission ever made as a
+ * full history/audit trail and is never rewritten. This keeps a second tab,
+ * "LatestBySegment", with exactly one row per SegmentId - always overwritten
+ * in place with that segment's most recent submission - as a convenience view
+ * for reporting on "current" occupancy without having to dedupe manually.
+ */
+function upsertLatestRow(row) {
+  const sheet = getOrCreateLatestSheet();
+  const segIdColIndex = COLUMNS.indexOf("SegmentId") + 1;
+  const segmentId = row[segIdColIndex - 1];
+  const lastRow = sheet.getLastRow();
+
+  if (lastRow >= 2) {
+    const ids = sheet.getRange(2, segIdColIndex, lastRow - 1, 1).getValues();
+    for (let i = 0; i < ids.length; i++) {
+      if (ids[i][0] === segmentId) {
+        sheet.getRange(i + 2, 1, 1, row.length).setValues([row]);
+        return;
+      }
+    }
+  }
+  sheet.appendRow(row);
+}
+
+function getOrCreateLatestSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(LATEST_SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(LATEST_SHEET_NAME);
+    sheet.appendRow(COLUMNS);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+/**
+ * One-time helper for submissions that already existed before this feature
+ * was added (or to fix drift if the two tabs ever disagree): rebuilds
+ * "LatestBySegment" from scratch using everything in "Responses". Run this
+ * manually from the Apps Script editor - select "rebuildLatestSheet" in the
+ * function dropdown next to the Run button, then click Run - it is not
+ * triggered automatically by any submission.
+ */
+function rebuildLatestSheet() {
+  const responses = getOrCreateSheet();
+  const lastRow = responses.getLastRow();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const existing = ss.getSheetByName(LATEST_SHEET_NAME);
+  if (existing) ss.deleteSheet(existing);
+  const latest = ss.insertSheet(LATEST_SHEET_NAME);
+  latest.appendRow(COLUMNS);
+  latest.setFrozenRows(1);
+
+  if (lastRow < 2) return;
+  const segIdColIndex = COLUMNS.indexOf("SegmentId") + 1;
+  const allRows = responses.getRange(2, 1, lastRow - 1, COLUMNS.length).getValues();
+  const bySegment = {};
+  allRows.forEach((row) => {
+    const id = row[segIdColIndex - 1];
+    if (id) bySegment[id] = row; // rows are in submission order, so later ones win
+  });
+  const values = Object.values(bySegment);
+  if (values.length) {
+    latest.getRange(2, 1, values.length, COLUMNS.length).setValues(values);
   }
 }
 
