@@ -9,7 +9,13 @@
   const SUBMITTED_KEY = "parknavSubmittedSegments";
   const DEFAULT_STYLE = { color: "#0055a2", weight: 5, opacity: 0.55 };
   const SELECTED_STYLE = { color: "#e2662b", weight: 6, opacity: 0.95 };
-  const SUBMITTED_STYLE = { color: "#1f9d55", weight: 5, opacity: 0.75 };
+  // Deliberately not blue/orange/green/red/amber - those are all already used
+  // elsewhere in this app (default line, selected line, location marker +
+  // low-occupancy fill, high-occupancy fill, mid-occupancy fill/pending
+  // badge). Violet is unique to this one meaning and doesn't occur naturally
+  // in the OSM basemap, so it reads clearly against both the map and the
+  // other segment states.
+  const SUBMITTED_STYLE = { color: "#7c3aed", weight: 5, opacity: 0.85 };
   const SYNC_INTERVAL_MS = 20000;
   const SUBMITTED_REFRESH_INTERVAL_MS = 45000;
 
