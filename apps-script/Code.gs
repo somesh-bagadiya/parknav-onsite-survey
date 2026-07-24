@@ -35,7 +35,10 @@ const COLUMNS = [
 ];
 
 function doGet(e) {
-  const action = e.parameter && e.parameter.action;
+  // e is undefined when this is run manually from the Apps Script editor
+  // (there's no real HTTP request behind it) rather than hit as a URL - guard
+  // against that so a manual test-run doesn't throw.
+  const action = e && e.parameter && e.parameter.action;
   if (action === "submittedSegments") {
     return jsonResponse(getDistinctSegmentIds());
   }
