@@ -181,6 +181,14 @@
     const mid = midpointBySegmentId.get(seg.id) || [null, null];
     selectedSegment = { id: seg.id, name: seg.name || "", lat: mid[0], lng: mid[1] };
 
+    // Hide whatever sheet is currently open for the PREVIOUS segment right
+    // away. Without this, tapping a new segment while a preview/form sheet
+    // is still open (the map stays partly visible above it, so this is
+    // reachable) left the old sheet's stale content sitting on top of the
+    // loading spinner for the whole fetch, instead of the spinner showing.
+    document.getElementById("preview-sheet").hidden = true;
+    document.getElementById("form-sheet").hidden = true;
+
     // Already-submitted street: show a preview of what's on file (count +
     // latest details) before jumping into the form, so surveyors don't
     // accidentally duplicate work blind. If we can't reach the backend
