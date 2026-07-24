@@ -10,7 +10,7 @@ segment names, no search box, works offline.
    needed — optionally tap "Add to Home Screen" for an app-like icon).
 2. The first time, enter your name/ID once — it's remembered on that device.
 3. Tap any highlighted street on the map. **Blue** = not yet surveyed,
-   **violet/purple** = already submitted (by you or a teammate), **orange** =
+   **gold** = already submitted (by you or a teammate), **orange** =
    the street you currently have open. A legend in the bottom-left corner of
    the map is a reminder of this.
 4. Fill in:
@@ -20,7 +20,7 @@ segment names, no search box, works offline.
    - **Photo of the segment** — not required, but encouraged; it's shown
      right on the main form, not tucked away.
    - Optionally, under "Optional details": time limit, meter rate.
-5. Tap **Submit**. The street immediately turns violet/purple on the map.
+5. Tap **Submit**. The street immediately turns gold on the map.
 6. If you have no signal, it still saves — you'll see a **"pending"** counter
    at the top. It sends automatically once you're back online. Don't clear
    your browser data before it syncs, or queued entries will be lost.
@@ -135,7 +135,7 @@ whole folder in supported browsers). Then enable Pages the same way as above.
 - **San José coverage only:** the segment set matches the current
   `.parking_cache.json` snapshot; it does not auto-refresh from Parknav.
 - **Team-wide "submitted" coloring is best-effort:** a device always shows
-  its own submissions in violet/purple (works offline, instant). Seeing
+  its own submissions in gold (works offline, instant). Seeing
   teammates' submissions that way too requires reading a list back from the
   Apps Script backend, which depends on Google allowing that cross-origin
   GET — it works in most deployments, but if it doesn't, each device simply

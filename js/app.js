@@ -9,13 +9,7 @@
   const SUBMITTED_KEY = "parknavSubmittedSegments";
   const DEFAULT_STYLE = { color: "#0055a2", weight: 5, opacity: 0.55 };
   const SELECTED_STYLE = { color: "#e2662b", weight: 6, opacity: 0.95 };
-  // Deliberately not blue/orange/green/red/amber - those are all already used
-  // elsewhere in this app (default line, selected line, location marker +
-  // low-occupancy fill, high-occupancy fill, mid-occupancy fill/pending
-  // badge). Violet is unique to this one meaning and doesn't occur naturally
-  // in the OSM basemap, so it reads clearly against both the map and the
-  // other segment states.
-  const SUBMITTED_STYLE = { color: "#7c3aed", weight: 5, opacity: 0.85 };
+  const SUBMITTED_STYLE = { color: "#D4AF37", weight: 5, opacity: 0.9 };
   const SYNC_INTERVAL_MS = 20000;
   const SUBMITTED_REFRESH_INTERVAL_MS = 45000;
 
@@ -167,13 +161,26 @@
   // Name / ID capture (REQ-012, ASM-005)
   // ---------------------------------------------------------------------
 
+  // Two people typing "Somesh", "somesh", and "SOMESH" should all be treated
+  // as the same surveyor in the Sheet, not three different-looking names.
+  // Normalize to a single canonical casing ("Title Case") so name-based
+  // filtering/grouping downstream is reliable regardless of how each person
+  // happened to type it.
+  function normalizeName(raw) {
+    return raw
+      .trim()
+      .replace(/\s+/g, " ")
+      .toLowerCase()
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+
   function ensureSurveyorName() {
     const existing = localStorage.getItem(NAME_KEY);
     if (existing) return;
     const modal = document.getElementById("name-modal");
     modal.hidden = false;
     document.getElementById("name-save-btn").addEventListener("click", () => {
-      const val = document.getElementById("name-input").value.trim();
+      const val = normalizeName(document.getElementById("name-input").value);
       if (!val) {
         document.getElementById("name-input").focus();
         return;
@@ -184,7 +191,8 @@
   }
 
   function getSurveyorName() {
-    return localStorage.getItem(NAME_KEY) || "Unknown";
+    const stored = localStorage.getItem(NAME_KEY);
+    return stored ? normalizeName(stored) : "Unknown";
   }
 
   // ---------------------------------------------------------------------
