@@ -184,9 +184,13 @@
     // Already-submitted street: show a preview of what's on file (count +
     // latest details) before jumping into the form, so surveyors don't
     // accidentally duplicate work blind. If we can't reach the backend
-    // (offline, etc.) just fall through to the normal blank form.
+    // (offline, etc.) just fall through to the normal blank form. The fetch
+    // takes a couple of seconds, so show a loading state instead of leaving
+    // the screen looking unresponsive/stale in the meantime.
     if (submittedSegmentIds.has(seg.id)) {
+      document.getElementById("loading-sheet").hidden = false;
       const details = await fetchSegmentDetails(seg.id);
+      document.getElementById("loading-sheet").hidden = true;
       // Bail if the user tapped away from this segment while the fetch was
       // in flight.
       if (!selectedSegment || selectedSegment.id !== seg.id) return;
@@ -205,6 +209,7 @@
     selectedLayer = null;
     selectedSegment = null;
     pendingEditPrefill = null;
+    document.getElementById("loading-sheet").hidden = true;
   }
 
   // ---------------------------------------------------------------------
