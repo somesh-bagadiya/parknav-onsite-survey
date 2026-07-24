@@ -8,7 +8,12 @@
  * only tiles the surveyor has already scrolled past will be available
  * offline - there is no full offline basemap pre-download in this version.
  */
-const SHELL_CACHE = "parknav-survey-shell-v1";
+// Bump SHELL_CACHE's version suffix (v2, v3, ...) any time app shell files
+// (index.html/css/js) change. This file's bytes changing is also what makes
+// the browser notice there's a new service worker to install in the first
+// place - see the network-first strategy below for why that alone isn't
+// enough to guarantee updates show up.
+const SHELL_CACHE = "parknav-survey-shell-v2";
 const TILE_CACHE = "parknav-survey-tiles-v1";
 
 const SHELL_URLS = [
@@ -84,17 +89,20 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // App shell (HTML/CSS/JS/segments.json/vendor libs): network-first, falling
+  // back to cache only when offline. This is what actually keeps the app
+  // up to date after every deploy - if we cache-first here, a phone that
+  // already has the app installed would keep showing an old version
+  // indefinitely, since the shell files rarely change bytes on their own.
   if (url.startsWith(self.location.origin)) {
     event.respondWith(
-      caches.match(req).then(
-        (cached) =>
-          cached ||
-          fetch(req).then((res) => {
-            const resClone = res.clone();
-            caches.open(SHELL_CACHE).then((cache) => cache.put(req, resClone));
-            return res;
-          })
-      )
+      fetch(req)
+        .then((res) => {
+          const resClone = res.clone();
+          caches.open(SHELL_CACHE).then((cache) => cache.put(req, resClone));
+          return res;
+        })
+        .catch(() => caches.match(req))
     );
   }
 });
