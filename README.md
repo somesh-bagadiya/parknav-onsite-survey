@@ -9,13 +9,18 @@ segment names, no search box, works offline.
 1. Open the link you were sent (works in any phone browser, no app install
    needed — optionally tap "Add to Home Screen" for an app-like icon).
 2. The first time, enter your name/ID once — it's remembered on that device.
-3. Tap any highlighted street on the map.
+3. Tap any highlighted street on the map. **Blue** = not yet surveyed,
+   **green** = already submitted (by you or a teammate), **orange** = the
+   street you currently have open. A legend in the bottom-left corner of the
+   map is a reminder of this.
 4. Fill in:
    - **Total parking spots** (required)
    - **Occupied spots** (required)
    - Occupancy % fills in automatically as you type.
-   - Optionally: a photo of the segment, time limit, meter rate.
-5. Tap **Submit**.
+   - **Photo of the segment** — not required, but encouraged; it's shown
+     right on the main form, not tucked away.
+   - Optionally, under "Optional details": time limit, meter rate.
+5. Tap **Submit**. The street immediately turns green on the map.
 6. If you have no signal, it still saves — you'll see a **"pending"** counter
    at the top. It sends automatically once you're back online. Don't clear
    your browser data before it syncs, or queued entries will be lost.
@@ -72,6 +77,21 @@ See [`apps-script/DEPLOY.md`](apps-script/DEPLOY.md). In short: create a
 Google Sheet, paste in `Code.gs`, deploy it as a Web App, then put the
 resulting URL into `js/config.js`.
 
+### Matching submissions to the exact segment
+
+Every row in the Sheet carries `SegmentId` (a stable id from
+`data/segments.json`), `SegmentName`, and now `SegmentLat`/`SegmentLng` (the
+segment's map midpoint) — recorded per-row at submit time, not inferred
+from the order entries arrive in. So it doesn't matter what order the team
+covers segments in, or whether two people submit for different streets at
+the same time: each row is self-contained and can always be traced back to
+one exact street on the map, either by looking up `SegmentId` in
+`data/segments.json` or by plotting `SegmentLat`/`SegmentLng` directly.
+
+If you already deployed an earlier version of `Code.gs` and have existing
+rows, see the "Updating from an earlier version" section in
+[`apps-script/DEPLOY.md`](apps-script/DEPLOY.md) to add the two new columns.
+
 ### Publishing to GitHub Pages
 
 This repo folder is meant to become its own GitHub repo
@@ -114,3 +134,9 @@ whole folder in supported browsers). Then enable Pages the same way as above.
   trade-off for simplicity (see `docs/parknav-segment-survey-webapp-plan.md`).
 - **San José coverage only:** the segment set matches the current
   `.parking_cache.json` snapshot; it does not auto-refresh from Parknav.
+- **Team-wide "submitted" coloring is best-effort:** a device always shows
+  its own submissions in green (works offline, instant). Seeing teammates'
+  submissions in green too requires reading a list back from the Apps
+  Script backend, which depends on Google allowing that cross-origin GET —
+  it works in most deployments, but if it doesn't, each device simply falls
+  back to only showing what it personally submitted.

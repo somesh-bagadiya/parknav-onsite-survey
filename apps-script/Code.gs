@@ -22,6 +22,8 @@ const COLUMNS = [
   "SubmitterName",
   "SegmentId",
   "SegmentName",
+  "SegmentLat",
+  "SegmentLng",
   "TotalSpots",
   "OccupiedSpots",
   "OccupancyPct",
@@ -32,9 +34,37 @@ const COLUMNS = [
 ];
 
 function doGet(e) {
+  const action = e.parameter && e.parameter.action;
+  if (action === "submittedSegments") {
+    return jsonResponse(getDistinctSegmentIds());
+  }
   return ContentService.createTextOutput(
     "Parknav Survey API is running."
   ).setMimeType(ContentService.MimeType.TEXT);
+}
+
+/**
+ * Returns every distinct SegmentId that already has at least one submission,
+ * so the map app can shade already-covered streets for the whole team (not
+ * just the current device). Used by the "GET ?action=submittedSegments"
+ * endpoint.
+ */
+function getDistinctSegmentIds() {
+  const sheet = getOrCreateSheet();
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return [];
+  const colIndex = COLUMNS.indexOf("SegmentId") + 1;
+  const values = sheet.getRange(2, colIndex, lastRow - 1, 1).getValues();
+  const seen = {};
+  const result = [];
+  values.forEach((row) => {
+    const id = row[0];
+    if (id && !seen[id]) {
+      seen[id] = true;
+      result.push(id);
+    }
+  });
+  return result;
 }
 
 function doPost(e) {
@@ -57,6 +87,8 @@ function doPost(e) {
       payload.submitterName || "",
       payload.segmentId || "",
       payload.segmentName || "",
+      payload.segmentLat ?? "",
+      payload.segmentLng ?? "",
       payload.totalSpots ?? "",
       payload.occupiedSpots ?? "",
       payload.occupancyPct ?? "",

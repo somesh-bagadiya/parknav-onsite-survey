@@ -22,6 +22,11 @@
 
   <div id="hint-banner" class="hint-banner">Tap a highlighted street to record it</div>
 
+  <div id="map-legend" class="map-legend">
+    <div class="legend-row"><span class="legend-swatch legend-swatch-pending"></span> Not yet surveyed</div>
+    <div class="legend-row"><span class="legend-swatch legend-swatch-done"></span> Submitted</div>
+  </div>
+
   <!-- Name / ID capture modal -->
   <div id="name-modal" class="modal-overlay" hidden>
     <div class="modal-card">
@@ -62,14 +67,14 @@
         <div id="occupancy-pct" class="occupancy-pct">--%</div>
       </div>
 
+      <label class="field">
+        <span class="field-label">Photo of segment <span class="field-optional-tag">(optional, but helpful)</span></span>
+        <input type="file" id="field-photo" accept="image/*" capture="environment" />
+        <img id="photo-preview" class="photo-preview" hidden />
+      </label>
+
       <details class="optional-section">
         <summary>Optional details</summary>
-
-        <label class="field">
-          <span class="field-label">Photo of segment</span>
-          <input type="file" id="field-photo" accept="image/*" capture="environment" />
-          <img id="photo-preview" class="photo-preview" hidden />
-        </label>
 
         <div class="field-row two-col">
           <label class="field">

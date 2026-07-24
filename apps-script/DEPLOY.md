@@ -74,3 +74,34 @@ Every time you edit `Code.gs` and want the live URL to reflect the change,
 use **Deploy → Manage deployments → (pencil/edit icon) → New version →
 Deploy**. Editing the code alone does *not* update the already-deployed
 Web app URL.
+
+## Updating from an earlier version (SegmentLat/SegmentLng columns added)
+
+If you deployed before and already have a `Responses` sheet with data in it,
+the code now writes two extra columns (`SegmentLat`, `SegmentLng`, inserted
+right after `SegmentName`) so every submission can be matched to an exact
+map location, not just an ID. Since the header row is only auto-created the
+*first* time the sheet is created, you need to manually keep it in sync:
+
+1. Open your `Responses` tab.
+2. Right-click the column header where `TotalSpots` currently is, and
+   **Insert 2 columns left**.
+3. Label the two new columns `SegmentLat` and `SegmentLng` (matching the
+   `COLUMNS` list at the top of `Code.gs`).
+4. Re-paste the updated `Code.gs` into the Apps Script editor (replacing the
+   old version) and redeploy: **Deploy → Manage deployments → pencil icon →
+   Version: New version → Deploy**. The Web app URL stays the same, so
+   `js/config.js` does not need to change.
+
+If your `Responses` sheet only has test data so far, it's simplest to just
+delete the sheet/tab entirely and let the script recreate it (with the
+correct headers) on the next submission.
+
+## New endpoint: "already-submitted segments"
+
+`GET <your-web-app-url>?action=submittedSegments` returns a JSON array of
+every distinct `SegmentId` that has at least one submission. The map app
+uses this to shade streets green for the whole team, not just the device
+that submitted them. This requires the same redeploy step above to take
+effect. It's best-effort: if it's unreachable for any reason, the app
+silently falls back to only showing segments *this device* has submitted.

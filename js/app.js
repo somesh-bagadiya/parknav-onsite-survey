@@ -6,15 +6,79 @@
   "use strict";
 
   const NAME_KEY = "parknavSurveyorName";
+  const SUBMITTED_KEY = "parknavSubmittedSegments";
   const DEFAULT_STYLE = { color: "#0055a2", weight: 5, opacity: 0.55 };
   const SELECTED_STYLE = { color: "#e2662b", weight: 6, opacity: 0.95 };
+  const SUBMITTED_STYLE = { color: "#1f9d55", weight: 5, opacity: 0.75 };
   const SYNC_INTERVAL_MS = 20000;
+  const SUBMITTED_REFRESH_INTERVAL_MS = 45000;
 
   let map;
   let selectedLayer = null;
-  let selectedSegment = null; // { id, name }
+  let selectedSegment = null; // { id, name, lat, lng }
   let compressedPhoto = null; // { dataUrl, width, height, approxBytes }
   const layerBySegmentId = new Map();
+  const midpointBySegmentId = new Map(); // id -> [lat, lng]
+  let submittedSegmentIds = new Set();
+
+  // ---------------------------------------------------------------------
+  // Submitted-segment tracking (feature: color already-submitted segments)
+  // ---------------------------------------------------------------------
+
+  function loadSubmittedSetFromStorage() {
+    try {
+      const raw = localStorage.getItem(SUBMITTED_KEY);
+      submittedSegmentIds = new Set(raw ? JSON.parse(raw) : []);
+    } catch (err) {
+      submittedSegmentIds = new Set();
+    }
+  }
+
+  function persistSubmittedSet() {
+    localStorage.setItem(SUBMITTED_KEY, JSON.stringify([...submittedSegmentIds]));
+  }
+
+  function styleForSegment(id) {
+    return submittedSegmentIds.has(id) ? SUBMITTED_STYLE : DEFAULT_STYLE;
+  }
+
+  function markSegmentSubmitted(id) {
+    if (submittedSegmentIds.has(id)) return;
+    submittedSegmentIds.add(id);
+    persistSubmittedSet();
+    const layer = layerBySegmentId.get(id);
+    if (layer && layer !== selectedLayer) {
+      layer.setStyle(SUBMITTED_STYLE);
+    }
+  }
+
+  // Best-effort: ask the backend which segments already have a submission
+  // from ANY surveyor (not just this device), so the team doesn't
+  // accidentally re-cover the same street. This relies on Apps Script's
+  // GET endpoint being reachable cross-origin; if it isn't (network error,
+  // stale deployment, etc.) this silently no-ops and local marks still work.
+  async function fetchSubmittedFromServer() {
+    if (!navigator.onLine) return;
+    if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.indexOf("PASTE_YOUR") === 0) return;
+    try {
+      const res = await fetch(APPS_SCRIPT_URL + "?action=submittedSegments");
+      if (!res.ok) return;
+      const ids = await res.json();
+      if (!Array.isArray(ids)) return;
+      let changed = false;
+      ids.forEach((id) => {
+        if (!submittedSegmentIds.has(id)) {
+          submittedSegmentIds.add(id);
+          changed = true;
+          const layer = layerBySegmentId.get(id);
+          if (layer && layer !== selectedLayer) layer.setStyle(SUBMITTED_STYLE);
+        }
+      });
+      if (changed) persistSubmittedSet();
+    } catch (err) {
+      // Offline, CORS not available, or backend not redeployed yet - ignore.
+    }
+  }
 
   // ---------------------------------------------------------------------
   // Map setup
@@ -44,8 +108,10 @@
 
     data.segments.forEach((seg) => {
       const latlngs = seg.path;
+      const mid = latlngs[Math.floor(latlngs.length / 2)];
+      midpointBySegmentId.set(seg.id, mid);
       const line = L.polyline(latlngs, {
-        ...DEFAULT_STYLE,
+        ...styleForSegment(seg.id),
         className: "segment-line",
       }).addTo(map);
       line.on("click", () => selectSegment(seg, line));
@@ -73,18 +139,19 @@
 
   function selectSegment(seg, layer) {
     if (selectedLayer) {
-      selectedLayer.setStyle(DEFAULT_STYLE);
+      selectedLayer.setStyle(styleForSegment(selectedSegment && selectedSegment.id));
     }
     layer.setStyle(SELECTED_STYLE);
     layer.bringToFront();
     selectedLayer = layer;
-    selectedSegment = { id: seg.id, name: seg.name || "" };
+    const mid = midpointBySegmentId.get(seg.id) || [null, null];
+    selectedSegment = { id: seg.id, name: seg.name || "", lat: mid[0], lng: mid[1] };
     openFormSheet();
   }
 
   function deselectSegment() {
-    if (selectedLayer) {
-      selectedLayer.setStyle(DEFAULT_STYLE);
+    if (selectedLayer && selectedSegment) {
+      selectedLayer.setStyle(styleForSegment(selectedSegment.id));
     }
     selectedLayer = null;
     selectedSegment = null;
@@ -226,6 +293,8 @@
       submitterName: getSurveyorName(),
       segmentId: selectedSegment.id,
       segmentName: selectedSegment.name,
+      segmentLat: selectedSegment.lat,
+      segmentLng: selectedSegment.lng,
       totalSpots: total,
       occupiedSpots: occupied,
       occupancyPct: computeOccupancyPct(total, occupied),
@@ -236,6 +305,7 @@
 
     await SurveyQueue.add(payload);
     await refreshSyncBadge();
+    markSegmentSubmitted(selectedSegment.id);
     showToast("Saved. Will sync automatically.");
     closeFormSheet();
     trySync();
@@ -311,7 +381,8 @@
 
   function init() {
     ensureSurveyorName();
-    initMap();
+    loadSubmittedSetFromStorage();
+    initMap().then(fetchSubmittedFromServer);
 
     document.getElementById("form-close-btn").addEventListener("click", closeFormSheet);
     document.getElementById("survey-form").addEventListener("submit", handleSubmit);
@@ -319,8 +390,12 @@
     document.getElementById("field-occupied").addEventListener("input", updateOccupancyDisplay);
     document.getElementById("field-photo").addEventListener("change", handlePhotoChange);
 
-    window.addEventListener("online", trySync);
+    window.addEventListener("online", () => {
+      trySync();
+      fetchSubmittedFromServer();
+    });
     setInterval(trySync, SYNC_INTERVAL_MS);
+    setInterval(fetchSubmittedFromServer, SUBMITTED_REFRESH_INTERVAL_MS);
     refreshSyncBadge();
     trySync();
 
