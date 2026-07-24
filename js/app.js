@@ -354,7 +354,8 @@
   async function refreshSyncBadge() {
     const n = await SurveyQueue.count();
     const badge = document.getElementById("sync-badge");
-    document.getElementById("sync-count").textContent = n;
+    document.getElementById("sync-label").textContent =
+      n > 0 ? `${n} pending` : "All synced";
     badge.classList.toggle("has-pending", n > 0);
   }
 
