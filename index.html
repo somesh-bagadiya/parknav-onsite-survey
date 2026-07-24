@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>Parknav Onsite Survey</title>
+<meta name="theme-color" content="#0055a2" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <header id="topbar">
+    <div id="topbar-title">Parknav Onsite Survey</div>
+    <div id="sync-badge" class="sync-badge" title="Pending submissions waiting to sync">
+      <span id="sync-count">0</span> pending
+    </div>
+  </header>
+
+  <div id="map"></div>
+
+  <div id="hint-banner" class="hint-banner">Tap a highlighted street to record it</div>
+
+  <!-- Name / ID capture modal -->
+  <div id="name-modal" class="modal-overlay" hidden>
+    <div class="modal-card">
+      <h2>Welcome</h2>
+      <p>Enter your name or ID so submissions can be tracked back to you.</p>
+      <input id="name-input" type="text" placeholder="e.g. Somesh B." autocomplete="name" />
+      <button id="name-save-btn" class="btn btn-primary">Continue</button>
+    </div>
+  </div>
+
+  <!-- Segment data entry form -->
+  <div id="form-sheet" class="sheet" hidden>
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div>
+        <div id="form-segment-label" class="sheet-title">Segment</div>
+        <div id="form-time-label" class="sheet-subtitle"></div>
+      </div>
+      <button id="form-close-btn" class="icon-btn" aria-label="Close">&times;</button>
+    </div>
+
+    <form id="survey-form">
+      <div class="field-row two-col">
+        <label class="field">
+          <span class="field-label required">Total parking spots</span>
+          <input type="number" id="field-total" inputmode="numeric" min="0" max="500" required />
+        </label>
+        <label class="field">
+          <span class="field-label required">Occupied spots</span>
+          <input type="number" id="field-occupied" inputmode="numeric" min="0" max="500" required />
+        </label>
+      </div>
+
+      <div id="field-error" class="field-error" hidden></div>
+
+      <div class="occupancy-display">
+        <div class="occupancy-bar"><div id="occupancy-fill" class="occupancy-fill"></div></div>
+        <div id="occupancy-pct" class="occupancy-pct">--%</div>
+      </div>
+
+      <details class="optional-section">
+        <summary>Optional details</summary>
+
+        <label class="field">
+          <span class="field-label">Photo of segment</span>
+          <input type="file" id="field-photo" accept="image/*" capture="environment" />
+          <img id="photo-preview" class="photo-preview" hidden />
+        </label>
+
+        <div class="field-row two-col">
+          <label class="field">
+            <span class="field-label">Time limit (hours)</span>
+            <input type="number" id="field-time-limit" inputmode="decimal" min="0" max="24" step="0.5" />
+          </label>
+          <label class="field">
+            <span class="field-label">Meter rate ($/hr)</span>
+            <input type="number" id="field-meter-rate" inputmode="decimal" min="0" max="20" step="0.25" />
+          </label>
+        </div>
+      </details>
+
+      <button type="submit" class="btn btn-primary btn-block">Submit</button>
+    </form>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="vendor/leaflet/leaflet.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/idb-queue.js"></script>
+  <script src="js/photo.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
