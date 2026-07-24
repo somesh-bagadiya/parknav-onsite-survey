@@ -13,6 +13,11 @@ segment names, no search box, works offline.
    **gold** = already submitted (by you or a teammate), **orange** =
    the street you currently have open. A legend in the bottom-left corner of
    the map is a reminder of this.
+   - Tapping a **gold** street shows a preview first — how many times it's
+     been submitted and the latest values — with a choice to **Add new
+     observation** (blank form) or **Edit** (same form, pre-filled with the
+     last submission so you only have to fix what's wrong). Either way, a
+     new row is added to the Sheet; nothing is ever deleted.
 4. Fill in:
    - **Total parking spots** (required)
    - **Occupied spots** (required)

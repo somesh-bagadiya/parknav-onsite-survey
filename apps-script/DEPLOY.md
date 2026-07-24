@@ -132,3 +132,13 @@ anything for new submissions. If you already had submissions in `Responses`
 You can re-run `rebuildLatestSheet` any time you want to force the two tabs
 back into agreement (it fully recreates `LatestBySegment` from whatever is
 currently in `Responses`).
+
+## New endpoint: "segment details" (powers the preview + edit feature)
+
+`GET <your-web-app-url>?action=segmentDetails&segmentId=seg_0145` returns
+how many times a street has been submitted and its most recent submission's
+full details (read from `LatestBySegment`). The app uses this to show a
+preview ("Submitted 2 times, last: 5/10 spots, 50%, by Somesh...") with
+"Add new observation" / "Edit" options whenever someone taps a
+already-gold street, instead of jumping straight into a blank form. This
+also requires the same redeploy step above.

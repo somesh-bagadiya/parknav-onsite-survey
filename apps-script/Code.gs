@@ -42,9 +42,62 @@ function doGet(e) {
   if (action === "submittedSegments") {
     return jsonResponse(getDistinctSegmentIds());
   }
+  if (action === "segmentDetails") {
+    return jsonResponse(getSegmentDetails(e.parameter.segmentId));
+  }
   return ContentService.createTextOutput(
     "Parknav Survey API is running."
   ).setMimeType(ContentService.MimeType.TEXT);
+}
+
+/**
+ * Powers the "this street was already submitted" preview in the app: how
+ * many times it's been submitted, and the full details of the most recent
+ * submission (read from LatestBySegment, since that's already deduped and
+ * far cheaper to query than scanning all of Responses for every tap).
+ * Used by the "GET ?action=segmentDetails&segmentId=..." endpoint.
+ */
+function getSegmentDetails(segmentId) {
+  if (!segmentId) return { count: 0, latest: null };
+  return {
+    count: countSubmissionsForSegment(segmentId),
+    latest: getLatestRowForSegment(segmentId),
+  };
+}
+
+function countSubmissionsForSegment(segmentId) {
+  const sheet = getOrCreateSheet();
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return 0;
+  const colIndex = COLUMNS.indexOf("SegmentId") + 1;
+  const ids = sheet.getRange(2, colIndex, lastRow - 1, 1).getValues();
+  let count = 0;
+  ids.forEach((row) => {
+    if (row[0] === segmentId) count++;
+  });
+  return count;
+}
+
+function getLatestRowForSegment(segmentId) {
+  const sheet = getOrCreateLatestSheet();
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return null;
+  const segIdColIndex = COLUMNS.indexOf("SegmentId") + 1;
+  const values = sheet.getRange(2, 1, lastRow - 1, COLUMNS.length).getValues();
+  for (let i = 0; i < values.length; i++) {
+    if (values[i][segIdColIndex - 1] === segmentId) {
+      return rowToObject(values[i]);
+    }
+  }
+  return null;
+}
+
+function rowToObject(row) {
+  const obj = {};
+  COLUMNS.forEach((col, idx) => {
+    obj[col] = row[idx];
+  });
+  return obj;
 }
 
 /**

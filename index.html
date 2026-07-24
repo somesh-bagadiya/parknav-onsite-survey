@@ -37,6 +37,26 @@
     </div>
   </div>
 
+  <!-- Preview of an already-submitted segment, shown before the form -->
+  <div id="preview-sheet" class="sheet" hidden>
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div>
+        <div class="sheet-title">Already submitted</div>
+        <div id="preview-count" class="sheet-subtitle"></div>
+      </div>
+      <button id="preview-close-btn" class="icon-btn" aria-label="Close">&times;</button>
+    </div>
+
+    <div id="preview-summary" class="preview-summary"></div>
+    <a id="preview-photo-link" class="preview-photo-link" target="_blank" rel="noopener" hidden>View attached photo</a>
+
+    <div class="preview-actions">
+      <button id="preview-add-new-btn" class="btn btn-secondary btn-block">Add new observation</button>
+      <button id="preview-edit-btn" class="btn btn-primary btn-block">Edit last entry</button>
+    </div>
+  </div>
+
   <!-- Segment data entry form -->
   <div id="form-sheet" class="sheet" hidden>
     <div class="sheet-handle"></div>
@@ -69,6 +89,9 @@
 
       <label class="field">
         <span class="field-label">Photo of segment <span class="field-optional-tag">(optional, but helpful)</span></span>
+        <a id="previous-photo-note" class="previous-photo-note" target="_blank" rel="noopener" hidden>
+          Previously attached photo (choose a new one below to replace it)
+        </a>
         <input type="file" id="field-photo" accept="image/*" capture="environment" />
         <img id="photo-preview" class="photo-preview" hidden />
       </label>

@@ -17,6 +17,7 @@
   let selectedLayer = null;
   let selectedSegment = null; // { id, name, lat, lng }
   let compressedPhoto = null; // { dataUrl, width, height, approxBytes }
+  let pendingEditPrefill = null; // last-submission row from the preview's "Edit" button
   const layerBySegmentId = new Map();
   const midpointBySegmentId = new Map(); // id -> [lat, lng]
   let submittedSegmentIds = new Set();
@@ -93,6 +94,26 @@
     }
   }
 
+  // Powers the "already submitted" preview: how many times this segment has
+  // been submitted, and the most recent submission's full details. Returns
+  // null (rather than throwing) whenever we can't reach the backend, so
+  // callers can fall back to the plain blank-form flow.
+  async function fetchSegmentDetails(id) {
+    if (!navigator.onLine) return null;
+    if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.indexOf("PASTE_YOUR") === 0) return null;
+    try {
+      const res = await fetch(
+        APPS_SCRIPT_URL + "?action=segmentDetails&segmentId=" + encodeURIComponent(id)
+      );
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (!data || typeof data.count !== "number") return null;
+      return data;
+    } catch (err) {
+      return null;
+    }
+  }
+
   // ---------------------------------------------------------------------
   // Map setup
   // ---------------------------------------------------------------------
@@ -150,7 +171,7 @@
     setTimeout(() => banner.classList.add("hidden"), 4000);
   }
 
-  function selectSegment(seg, layer) {
+  async function selectSegment(seg, layer) {
     if (selectedLayer) {
       selectedLayer.setStyle(styleForSegment(selectedSegment && selectedSegment.id));
     }
@@ -159,6 +180,21 @@
     selectedLayer = layer;
     const mid = midpointBySegmentId.get(seg.id) || [null, null];
     selectedSegment = { id: seg.id, name: seg.name || "", lat: mid[0], lng: mid[1] };
+
+    // Already-submitted street: show a preview of what's on file (count +
+    // latest details) before jumping into the form, so surveyors don't
+    // accidentally duplicate work blind. If we can't reach the backend
+    // (offline, etc.) just fall through to the normal blank form.
+    if (submittedSegmentIds.has(seg.id)) {
+      const details = await fetchSegmentDetails(seg.id);
+      // Bail if the user tapped away from this segment while the fetch was
+      // in flight.
+      if (!selectedSegment || selectedSegment.id !== seg.id) return;
+      if (details && details.count > 0) {
+        openPreviewSheet(details);
+        return;
+      }
+    }
     openFormSheet();
   }
 
@@ -168,6 +204,59 @@
     }
     selectedLayer = null;
     selectedSegment = null;
+    pendingEditPrefill = null;
+  }
+
+  // ---------------------------------------------------------------------
+  // "Already submitted" preview sheet
+  // ---------------------------------------------------------------------
+
+  function openPreviewSheet(details) {
+    const latest = details.latest || {};
+    pendingEditPrefill = latest;
+
+    document.getElementById("preview-count").textContent =
+      `Submitted ${details.count} time${details.count === 1 ? "" : "s"}`;
+
+    const when = latest.SubmittedAtLocal
+      ? new Date(latest.SubmittedAtLocal).toLocaleString()
+      : "unknown time";
+    const extras = [];
+    if (latest.TimeLimitHours) extras.push(`Time limit: ${latest.TimeLimitHours}h`);
+    if (latest.MeterRate) extras.push(`Meter rate: $${latest.MeterRate}/hr`);
+
+    document.getElementById("preview-summary").innerHTML = `
+      <div><strong>${escapeHtml(latest.TotalSpots ?? "—")}</strong> total,
+        <strong>${escapeHtml(latest.OccupiedSpots ?? "—")}</strong> occupied
+        (${escapeHtml(latest.OccupancyPct ?? "—")}%)</div>
+      <div>By ${escapeHtml(latest.SubmitterName || "Unknown")} &middot; ${escapeHtml(when)}</div>
+      ${extras.map((line) => `<div>${escapeHtml(line)}</div>`).join("")}
+    `;
+
+    const photoLink = document.getElementById("preview-photo-link");
+    if (latest.PhotoUrl) {
+      photoLink.href = latest.PhotoUrl;
+      photoLink.hidden = false;
+    } else {
+      photoLink.hidden = true;
+    }
+
+    document.getElementById("form-sheet").hidden = true;
+    document.getElementById("preview-sheet").hidden = false;
+  }
+
+  function closePreviewSheet() {
+    document.getElementById("preview-sheet").hidden = true;
+  }
+
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    })[c]);
   }
 
   // ---------------------------------------------------------------------
@@ -212,10 +301,37 @@
   // Form sheet (REQ-005 through REQ-011)
   // ---------------------------------------------------------------------
 
-  function openFormSheet() {
+  // Pass `prefill` (a row object shaped like the segmentDetails "latest"
+  // field) to open the form pre-populated with the last submission's
+  // values, for the preview sheet's "Edit" button. Submitting still creates
+  // a brand new row (see handleSubmit) - this never rewrites history, it
+  // just saves the surveyor from retyping everything to fix one field.
+  function openFormSheet(prefill) {
     resetForm();
     document.getElementById("form-time-label").textContent =
       "Observed " + new Date().toLocaleString();
+
+    if (prefill) {
+      if (prefill.TotalSpots !== "" && prefill.TotalSpots != null) {
+        document.getElementById("field-total").value = prefill.TotalSpots;
+      }
+      if (prefill.OccupiedSpots !== "" && prefill.OccupiedSpots != null) {
+        document.getElementById("field-occupied").value = prefill.OccupiedSpots;
+      }
+      if (prefill.TimeLimitHours !== "" && prefill.TimeLimitHours != null) {
+        document.getElementById("field-time-limit").value = prefill.TimeLimitHours;
+      }
+      if (prefill.MeterRate !== "" && prefill.MeterRate != null) {
+        document.getElementById("field-meter-rate").value = prefill.MeterRate;
+      }
+      updateOccupancyDisplay();
+      if (prefill.PhotoUrl) {
+        const note = document.getElementById("previous-photo-note");
+        note.href = prefill.PhotoUrl;
+        note.hidden = false;
+      }
+    }
+
     document.getElementById("form-sheet").hidden = false;
     document.getElementById("field-total").focus();
   }
@@ -229,6 +345,7 @@
     document.getElementById("survey-form").reset();
     document.getElementById("field-error").hidden = true;
     document.getElementById("photo-preview").hidden = true;
+    document.getElementById("previous-photo-note").hidden = true;
     compressedPhoto = null;
     updateOccupancyDisplay();
   }
@@ -417,6 +534,19 @@
     document.getElementById("field-total").addEventListener("input", updateOccupancyDisplay);
     document.getElementById("field-occupied").addEventListener("input", updateOccupancyDisplay);
     document.getElementById("field-photo").addEventListener("change", handlePhotoChange);
+
+    document.getElementById("preview-close-btn").addEventListener("click", () => {
+      closePreviewSheet();
+      deselectSegment();
+    });
+    document.getElementById("preview-add-new-btn").addEventListener("click", () => {
+      closePreviewSheet();
+      openFormSheet();
+    });
+    document.getElementById("preview-edit-btn").addEventListener("click", () => {
+      closePreviewSheet();
+      openFormSheet(pendingEditPrefill);
+    });
 
     window.addEventListener("online", () => {
       trySync();
