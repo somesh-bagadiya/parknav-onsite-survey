@@ -14,6 +14,12 @@
 
 * { box-sizing: border-box; }
 
+/* The `hidden` attribute must always win, even over elements whose class
+   sets its own `display` (e.g. .modal-overlay uses display:flex). Without
+   this, author CSS overrides the browser's built-in [hidden]{display:none}
+   rule and "hidden" elements stay visible. */
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0;
   padding: 0;
