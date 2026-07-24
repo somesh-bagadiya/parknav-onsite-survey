@@ -135,7 +135,15 @@ function doPost(e) {
 
     let photoUrl = "";
     if (payload.photoDataUrl) {
-      photoUrl = savePhoto(payload.photoDataUrl, payload.clientId || Utilities.getUuid());
+      // A photo failure (Drive quota, transient permission hiccup, unusual
+      // image data, etc.) must never cost the whole submission - the
+      // numeric survey data is the priority. Log it and keep going with an
+      // empty PhotoUrl rather than throwing out of the whole function.
+      try {
+        photoUrl = savePhoto(payload.photoDataUrl, payload.clientId || Utilities.getUuid());
+      } catch (photoErr) {
+        Logger.log("Photo save failed for clientId=" + payload.clientId + ": " + photoErr);
+      }
     }
 
     const row = [
